@@ -92,6 +92,32 @@ def generate_page(from_path, template_path, dest_path):
         f.write(final_html)
 
 
+def generate_pages_recursive(dir_path_content, template_path, dest_dir_path):
+    """
+    Recursively generate HTML pages from all markdown files in a content directory.
+    
+    Args:
+        dir_path_content: Path to the content directory containing markdown files
+        template_path: Path to the HTML template file
+        dest_dir_path: Path to the destination directory for generated HTML files
+    """
+    for item in os.listdir(dir_path_content):
+        src_path = os.path.join(dir_path_content, item)
+        dest_path = os.path.join(dest_dir_path, item)
+        
+        if os.path.isdir(src_path):
+            # Create corresponding directory in destination
+            os.makedirs(dest_path, exist_ok=True)
+            # Recursively process subdirectory
+            generate_pages_recursive(src_path, template_path, dest_path)
+        elif item.endswith('.md'):
+            # Convert .md extension to .html
+            html_filename = item[:-3] + '.html'
+            html_dest_path = os.path.join(dest_dir_path, html_filename)
+            # Generate the HTML page
+            generate_page(src_path, template_path, html_dest_path)
+
+
 def main():
     # Get the root directory (parent of src)
     root_dir = os.path.dirname(os.path.dirname(__file__))
@@ -112,12 +138,9 @@ def main():
     copy_static_to_public(static_dir, public_dir)
     print("Static file copy completed!")
     
-    # Generate the main page
-    index_md_path = os.path.join(content_dir, "index.md")
-    index_html_path = os.path.join(public_dir, "index.html")
-    
-    print("Generating main page...")
-    generate_page(index_md_path, template_path, index_html_path)
+    # Generate all pages recursively
+    print("Generating all pages...")
+    generate_pages_recursive(content_dir, template_path, public_dir)
     print("Page generation completed!")
 
 
