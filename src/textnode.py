@@ -261,6 +261,7 @@ def text_to_textnodes(text):
     nodes = split_nodes_link(nodes)
     nodes = split_nodes_delimiter(nodes, "**", TextType.BOLD)
     nodes = split_nodes_delimiter(nodes, "*", TextType.ITALIC)
+    nodes = split_nodes_delimiter(nodes, "_", TextType.ITALIC)
     nodes = split_nodes_delimiter(nodes, "`", TextType.CODE)
     
     return nodes
@@ -348,3 +349,110 @@ def block_to_block_type(block):
     
     # Default to paragraph if no other conditions are met
     return BlockType.PARAGRAPH
+
+
+def text_to_children(text):
+    """
+    Convert text containing inline markdown to a list of HTMLNode children.
+    
+    Args:
+        text: String containing inline markdown
+        
+    Returns:
+        List of HTMLNode objects representing the parsed inline markdown
+    """
+    from htmlnode import text_node_to_html_node
+    
+    text_nodes = text_to_textnodes(text)
+    children = []
+    for text_node in text_nodes:
+        html_node = text_node_to_html_node(text_node)
+        children.append(html_node)
+    return children
+
+
+def markdown_to_html_node(markdown):
+    """
+    Convert a full markdown document into a single parent HTMLNode.
+    
+    Args:
+        markdown: String containing markdown text
+        
+    Returns:
+        HTMLNode representing the markdown document as a div containing all blocks
+    """
+    from htmlnode import LeafNode, ParentNode
+    
+    blocks = markdown_to_blocks(markdown)
+    block_nodes = []
+    
+    for block in blocks:
+        block_type = block_to_block_type(block)
+        
+        if block_type == BlockType.PARAGRAPH:
+            # Replace newlines with spaces for paragraphs
+            paragraph_text = block.replace('\n', ' ')
+            children = text_to_children(paragraph_text)
+            block_nodes.append(ParentNode("p", children))
+            
+        elif block_type == BlockType.HEADING:
+            # Count leading # characters to determine heading level
+            hash_count = 0
+            for char in block:
+                if char == '#':
+                    hash_count += 1
+                else:
+                    break
+            
+            # Extract text after "# " (hash_count + 1 characters)
+            heading_text = block[hash_count + 1:]
+            children = text_to_children(heading_text)
+            block_nodes.append(ParentNode(f"h{hash_count}", children))
+            
+        elif block_type == BlockType.CODE:
+            # Remove surrounding ``` and create code block
+            code_text = block[3:-3]  # Remove first and last 3 characters (```)
+            # Strip leading newline only
+            code_text = code_text.lstrip('\n')
+            code_node = LeafNode("code", code_text)
+            block_nodes.append(ParentNode("pre", [code_node]))
+            
+        elif block_type == BlockType.QUOTE:
+            # Remove > from each line and join with newlines
+            lines = block.split('\n')
+            quote_lines = []
+            for line in lines:
+                # Remove the '>' character and any following space
+                if line.startswith('> '):
+                    quote_lines.append(line[2:])  # Remove '> '
+                else:
+                    quote_lines.append(line[1:])  # Remove just '>'
+            quote_text = '\n'.join(quote_lines)
+            children = text_to_children(quote_text)
+            block_nodes.append(ParentNode("blockquote", children))
+            
+        elif block_type == BlockType.UNORDERED_LIST:
+            # Split into list items and create ul with li elements
+            lines = block.split('\n')
+            list_items = []
+            for line in lines:
+                # Remove "- " from the beginning
+                item_text = line[2:]
+                item_children = text_to_children(item_text)
+                list_items.append(ParentNode("li", item_children))
+            block_nodes.append(ParentNode("ul", list_items))
+            
+        elif block_type == BlockType.ORDERED_LIST:
+            # Split into list items and create ol with li elements
+            lines = block.split('\n')
+            list_items = []
+            for line in lines:
+                # Find the ". " pattern and remove everything before it
+                dot_index = line.find(". ")
+                item_text = line[dot_index + 2:]
+                item_children = text_to_children(item_text)
+                list_items.append(ParentNode("li", item_children))
+            block_nodes.append(ParentNode("ol", list_items))
+    
+    # Return all blocks wrapped in a div
+    return ParentNode("div", block_nodes)
