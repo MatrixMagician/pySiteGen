@@ -371,6 +371,31 @@ def text_to_children(text):
     return children
 
 
+def extract_title(markdown):
+    """
+    Extract the h1 header from markdown text.
+    
+    Args:
+        markdown: String containing markdown text
+        
+    Returns:
+        String containing the h1 header text (without the # and whitespace)
+        
+    Raises:
+        ValueError: If no h1 header is found
+    """
+    lines = markdown.split('\n')
+    
+    for line in lines:
+        # Only strip leading whitespace to preserve the space after #
+        lstripped_line = line.lstrip()
+        if lstripped_line.startswith('# '):
+            # Extract text after "# " and strip whitespace
+            return lstripped_line[2:].strip()
+    
+    raise ValueError("No h1 header found in markdown")
+
+
 def markdown_to_html_node(markdown):
     """
     Convert a full markdown document into a single parent HTMLNode.

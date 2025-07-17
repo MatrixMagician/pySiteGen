@@ -1,6 +1,6 @@
 import unittest
 
-from textnode import TextNode, TextType, split_nodes_delimiter, extract_markdown_images, extract_markdown_links, split_nodes_image, split_nodes_link, text_to_textnodes, markdown_to_blocks, BlockType, block_to_block_type, text_to_children, markdown_to_html_node
+from textnode import TextNode, TextType, split_nodes_delimiter, extract_markdown_images, extract_markdown_links, split_nodes_image, split_nodes_link, text_to_textnodes, markdown_to_blocks, BlockType, block_to_block_type, text_to_children, markdown_to_html_node, extract_title
 
 
 class TestTextNode(unittest.TestCase):
@@ -1294,6 +1294,89 @@ def hello():
             html,
             "<div><pre><code>python\ndef hello():\n    print(\"Hello!\")\n</code></pre></div>",
         )
+
+class TestExtractTitle(unittest.TestCase):
+    def test_extract_title_basic(self):
+        markdown = "# Hello"
+        title = extract_title(markdown)
+        self.assertEqual(title, "Hello")
+
+    def test_extract_title_with_extra_whitespace(self):
+        markdown = "#   Hello World   "
+        title = extract_title(markdown)
+        self.assertEqual(title, "Hello World")
+
+    def test_extract_title_with_other_content(self):
+        markdown = """Some text before
+
+# Main Title
+
+Some text after"""
+        title = extract_title(markdown)
+        self.assertEqual(title, "Main Title")
+
+    def test_extract_title_with_formatting(self):
+        markdown = "# This is a **bold** title"
+        title = extract_title(markdown)
+        self.assertEqual(title, "This is a **bold** title")
+
+    def test_extract_title_multiline(self):
+        markdown = """This is a paragraph
+
+# The Real Title
+
+## Not this one
+
+Another paragraph"""
+        title = extract_title(markdown)
+        self.assertEqual(title, "The Real Title")
+
+    def test_extract_title_leading_whitespace(self):
+        markdown = "   # Indented Title   "
+        title = extract_title(markdown)
+        self.assertEqual(title, "Indented Title")
+
+    def test_extract_title_no_h1_header(self):
+        markdown = """## This is h2
+
+### This is h3
+
+Regular paragraph text"""
+        with self.assertRaises(ValueError) as context:
+            extract_title(markdown)
+        self.assertEqual(str(context.exception), "No h1 header found in markdown")
+
+    def test_extract_title_empty_markdown(self):
+        markdown = ""
+        with self.assertRaises(ValueError) as context:
+            extract_title(markdown)
+        self.assertEqual(str(context.exception), "No h1 header found in markdown")
+
+    def test_extract_title_hash_without_space(self):
+        markdown = "#NotATitle"
+        with self.assertRaises(ValueError) as context:
+            extract_title(markdown)
+        self.assertEqual(str(context.exception), "No h1 header found in markdown")
+
+    def test_extract_title_multiple_h1_headers(self):
+        markdown = """# First Title
+
+Some content
+
+# Second Title"""
+        title = extract_title(markdown)
+        self.assertEqual(title, "First Title")
+
+    def test_extract_title_empty_h1(self):
+        markdown = "#  "
+        title = extract_title(markdown)
+        self.assertEqual(title, "")
+
+    def test_extract_title_with_special_characters(self):
+        markdown = "# Title with $pecial Ch@racters & Symbols!"
+        title = extract_title(markdown)
+        self.assertEqual(title, "Title with $pecial Ch@racters & Symbols!")
+
 
 if __name__ == "__main__":
     unittest.main()
